@@ -1,0 +1,651 @@
+<?php
+
+/**
+ * @file
+ * XITI Integration.
+ */
+
+define('XITI_CALCULATE_SIMULATION_SCELLIER_NID', 2875);
+define('XITI_CALCULATE_SIMULATION_PTZ_NID', 2876);
+define('XITI_CALCULATE_FRAIS_DE_NOTAIRE_NID', 2877);
+define('XITI_CALCULATE_VOTRE_CAPACITE_D_EMPRUNT_NID', 2879);
+define('XITI_SINFORMER_PTZ_OCCUPANTS_NID', 2899);
+define('XITI_SINFORMER_LES_ATOUTS_DU_NEUF_NID', 2870);
+define('XITI_SINFORMER_LES_CLES_POUR_ACHETER_DANS_LE_NEUF_NID', 2871);
+define('XITI_SINFORMER_SCELLIER_INVESTISSEURS_NID', 2920);
+define('XITI_BIETVOUS_NOS_ENGAGEMENTS_NID', 2873);
+define('XITI_BIETVOUS_NOS_GARANTIES_NID', 2914);
+define('XITI_BIETVOUS_NOS_SERVICES_NID', 2915);
+
+/**
+ * Helper function to get scripts list.
+ */
+function xiti_get_scripts_list() {
+  return array('1' => 'xtcore.js', 2 => 'xtcore_recette.js');
+}
+
+/**
+ * Implements hook_menu().
+ */
+function xiti_menu() {
+  $items['ajax/xiti/track'] = array(
+    'page callback' => 'xiti_ajax_track',
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );
+  return $items;
+}
+
+/**
+ * Calback for ajax track
+ */
+function xiti_ajax_track() {
+  if (!empty($_POST['nid'])) {
+    $node = node_load($_POST['nid']);
+    if (!empty($node->field_status_lot[LANGUAGE_NONE][0]['tid'])) {
+      $tag[] = 'Compte_client';
+      if ($node->field_status_lot[LANGUAGE_NONE][0]['tid'] == SITE_TAXONOMY_STATUS_LOT_LIVRÉ) {
+        $tag[] = 'Accueil_livre';
+        $tag[] = 'Accueil_livre';
+      }
+      else {
+        $tag[] = 'Accueil_non_livre';
+        $tag[] = 'Accueil_non_livre';
+      }
+      xiti_get_page_tag($tag);
+      $params = xiti_generate_snippet('ajax');
+      drupal_json_output($params);
+    }
+    else {
+      drupal_json_output(0);
+    }
+  }
+}
+
+/**
+ * Helper function to get XITI tag for current page.
+ */
+function xiti_get_page_tag($set_tag = NULL) {
+  $tag = &drupal_static(__FUNCTION__);
+  if (isset($set_tag)) {
+    $tag = $set_tag;
+  }
+  // Xiti for home search page.
+  if (arg(0) == 'searchhome') {
+    $tag[] = 'Rechercher_logement';
+    $tag[] = 'Recherche_avancee';
+    $tag[] = 'Accueil_recherche_avancee';
+    $tag[] = 'Accueil_recherche_avancee';
+  }
+  elseif (arg(0) == 'search') {
+    $tag[] = 'Rechercher_logement';
+    $tag[] = 'Recherche_avancee';
+    $tag = xiti_generate_search_xtpage($tag);
+  }
+  elseif (arg(0) == 'apachesolr' && arg(1) == 'search') {
+    $tag[] = 'Rechercher_logement';
+    $tag[] = 'Resultat_recherche';
+    xiti_generate_search_type_xtpage($tag);
+  }
+  elseif ($node = menu_get_object()) {
+    $tag = xiti_generate_node_xtpage($node);
+  }
+  // User perso pages.
+  elseif (arg(0) == 'user' && arg(2) == 'perso') {
+    xiti_generate_perso_xtpage($tag);
+  }
+  elseif (arg(0) == 'user' && arg(1) == 'perso' && arg(2) == 'register') {
+    $tag[] = 'Compte_perso';
+    $tag[] = 'Inscription';
+    $tag[] = 'Detail_inscription';
+    $tag[] = 'Detail_inscription';
+  }
+  elseif (arg(0) == 'user' && arg(1) == 'create' && arg(2) == 'alert') {
+    $tag[] = 'Compte_perso';
+    $tag[] = 'Inscription_alerte';
+    $tag[] = 'Detail_inscription_alerte';
+    $tag[] = 'Detail_inscription_alerte';
+  }
+  elseif (arg(0) == 'searchglobal') {
+    $tag[] = 'Recherche_globale';
+    $tag[] = 'Accueil_recherche_globale';
+    $tag[] = 'Accueil_recherche_globale';
+  }
+  elseif (arg(0) == 'sitemap') {
+    $tag[] = 'Footer';
+    $tag[] = 'Plan_du_site';
+    $tag[] = 'Plan_du_site';
+  }
+  elseif (arg(0) == 'user' && arg(1) == 'perso' && arg(2) == 'contact') {
+    $tag[] = 'Footer';
+    $tag[] = 'Contact';
+    $tag[] = 'Detail_contact';
+    $tag[] = 'Detail_contact';
+  }
+  elseif (arg(0) == 'user' && arg(1) == 'land-for-sale') {
+    $tag[] = 'Footer';
+    $tag[] = 'Vendre_un_terrain';
+    $tag[] = '1_votre_demande';
+    $tag[] = 'Vendre_terrain_votre_demande';
+  }
+  elseif (arg(0) == 'lemag') {
+    $tag[] = 'S_informer';
+    $tag[] = 'Le_mag';
+    $tag[] = 'Accueil_Le_mag';
+    $tag[] = 'Accueil_Le_mag';
+  }
+  elseif (arg(0) == 'evenements') {
+    $tag[] = 'S_informer';
+    $tag[] = 'Agenda';
+    $tag[] = 'Detail_agenda';
+    $tag[] = 'Detail_agenda';
+  }
+  elseif (arg(0) == 'faqhome') {
+    $tag[] = 'S_informer';
+    $tag[] = 'FAQ';
+    $tag[] = 'Accueil';
+    $tag[] = 'FAQ_accueil';
+  }
+  elseif (arg(0) == 'informer') {
+    $tag[] = 'S_informer';
+    $tag[] = 'Accueil_s_informer';
+    $tag[] = 'Accueil_s_informer';
+  }
+  elseif (arg(0) == 'vous') {
+    $tag[] = 'Bouygues_immobilier_et_vous';
+    $tag[] = 'Accueil';
+    $tag[] = 'Accueil_BI_et_vous';
+    $tag[] = 'Accueil_BI_et_vous';
+  }
+  elseif (arg(0) == 'mosaic') {
+    $tag[] = 'et_vous';
+    $tag[] = 'Nos_références';
+    $tag[] = 'Accueil';
+    $tag[] = 'Accueil_nos_references';
+  }
+  if (arg(0) == 'espace' && arg(1) == 'maison') {
+    $tag[] = 'Espace_Maison';
+    if (isset($_GET['search']) && $_GET['search'] == 'maison') {
+      $tag[] = 'Resultat_recherche';
+      xiti_generate_search_type_xtpage($tag);
+    }
+    else {
+      $tag[] = 'Accueil_espace_maison';
+      $tag[] = 'Accueil_espace_maison';
+    }
+  }
+  // Home page.
+  elseif (drupal_is_front_page()) {
+    $tag[] = 'Home';
+    $tag[] = 'Home';
+  }
+  elseif (arg(0) == 'financer') {
+    $tag[] = 'Financer_votre_projet';
+    $tag[] = 'Accueil';
+    $tag[] = 'Accueil_financer';
+  }
+  elseif (arg(0) == 'user' && arg(2) == 'client' && isset($_SESSION['current_lot'])) {
+    $node = node_load($_SESSION['current_lot']);
+    if (!empty($node)) {
+      if (!empty($node->field_status_lot[LANGUAGE_NONE][0]['tid'])) {
+        $tag[] = 'Compte_client';
+        if ($node->field_status_lot[LANGUAGE_NONE][0]['tid'] == SITE_TAXONOMY_STATUS_LOT_LIVRÉ) {
+          $tag[] = 'Accueil_livre';
+          $tag[] = 'Accueil_livre';
+        }
+        else {
+          $tag[] = 'Accueil_non_livre';
+          $tag[] = 'Accueil_non_livre';
+        }
+      }
+    }
+  }
+  if (!isset($tag) && !is_array($tag)) {
+    $tag = array();
+  }
+  return implode('::', $tag);
+}
+
+/**
+ * Generate xiti tags for node
+ */
+function xiti_generate_node_xtpage($node) {
+  $tag = array();
+  switch ($node->type) {
+    case 'calculette':
+      $tag[] = 'Financer_votre_projet';
+      if ($node->nid == XITI_CALCULATE_SIMULATION_SCELLIER_NID) {
+        $tag[] = 'Simulation_scellier';
+        $tag[] = 'Accueil_simulation_scellier';
+        $tag[] = 'Accueil_simulation_scellier';
+      }
+      elseif ($node->nid == XITI_CALCULATE_SIMULATION_PTZ_NID) {
+        $tag[] = 'Simulation_PTZ+';
+        $tag[] = 'Accueil_simulation_PTZ+';
+        $tag[] = 'Accueil_simulation_PTZ+';
+      }
+      elseif ($node->nid == XITI_CALCULATE_FRAIS_DE_NOTAIRE_NID) {
+        $tag[] = 'Calculer_les_frais_de_notaire';
+        $tag[] = 'Accueil_calculer_les_frais_de_notaire';
+        $tag[] = 'Accueil_calculer_les_frais_de_notaire';
+      }
+      elseif ($node->nid == XITI_CALCULATE_VOTRE_CAPACITE_D_EMPRUNT_NID) {
+        $tag[] = 'Calculer_votre_capacite_d_emprunt';
+        $tag[] = 'Accueil_calculer_votre_capacite_d_emprunt';
+        $tag[] = 'Accueil_calculer_votre_capacite_d_emprunt';
+      }
+      break;
+
+    case 'sous_rubrique_informer':
+      $tag[] = 'S_informer';
+      if ($node->nid == XITI_SINFORMER_PTZ_OCCUPANTS_NID) {
+        $tag[] = 'PTZ+_et_aides_dediees_occupants';
+        $tag[] = 'Accueil_PTZ+_et_aides_dediees_occupants';
+        $tag[] = 'Accueil_PTZ+_et_aides_dediees_occupants';
+      }
+      elseif ($node->nid == XITI_SINFORMER_LES_ATOUTS_DU_NEUF_NID) {
+        $tag[] = 'Les_atouts_du_neuf';
+        $tag[] = 'Accueil_les_atouts_du_neuf';
+        $tag[] = 'Accueil_les_atouts_du_neuf';
+      }
+      elseif ($node->nid == XITI_SINFORMER_LES_CLES_POUR_ACHETER_DANS_LE_NEUF_NID) {
+        $tag[] = 'Les_cles_pour_acheter_dans_le_neuf';
+        $tag[] = 'Accueil';
+        $tag[] = 'Accueil_les_cles_pour_acheter_dans_le_neuf';
+      }
+      elseif ($node->nid == XITI_SINFORMER_SCELLIER_INVESTISSEURS_NID) {
+        $tag[] = 'Scellier_et_aides_dediees_investisseurs';
+        $tag[] = 'Accueil_scellier_et_aides_dediees_investisseurs_accueil';
+        $tag[] = 'Accueil_scellier_et_aides_dediees_investisseurs_accueil';
+      }
+      break;
+
+    case 'sous_rubrique_bi_et_vous':
+      $tag[] = 'et_vous';
+      if ($node->nid == XITI_BIETVOUS_NOS_ENGAGEMENTS_NID) {
+        $tag[] = 'Nos_engagements';
+        $tag[] = 'Detail_nos_engagements';
+        $tag[] = 'Detail_nos_engagements';
+      }
+      elseif ($node->nid == XITI_BIETVOUS_NOS_GARANTIES_NID) {
+        $tag[] = 'Nos_garanties';
+        $tag[] = 'Detail_nos_garanties';
+        $tag[] = 'Detail_nos_garanties';
+      }
+      elseif ($node->nid == XITI_BIETVOUS_NOS_SERVICES_NID) {
+        $tag[] = 'Nos_services';
+        $tag[] = 'Detail_nos_services';
+        $tag[] = 'Detail_nos_services';
+      }
+      break;
+
+    case 'ville':
+      $tag[] = 'Rechercher_logement';
+      $tag[] = 'Fiche_ville';
+      $tag[] = xiti_xtpage_filter($node->title);
+      $tag[] = 'Fiche_ville_' . xiti_xtpage_filter($node->title);
+      break;
+
+    case 'faq':
+      $tag[] = 'S_informer';
+      $tag[] = 'FAQ';
+      $tag[] = 'Accueil_' . xiti_xtpage_filter($node->title);
+      $tag[] = 'Accueil_' . xiti_xtpage_filter($node->title);
+      break;
+
+    case 'article_informer':
+      $tag[] = 'S_informer';
+      if (!empty($node->field_sous_rubrique[LANGUAGE_NONE][0]['nid'])) {
+        switch ($node->field_sous_rubrique[LANGUAGE_NONE][0]['nid']) {
+          case XITI_SINFORMER_PTZ_OCCUPANTS_NID:
+            $tag[] = 'PTZ+_et_aides_dediees_occupants';
+            $tag[] = 'Accueil_PTZ+_et_aides_dediees_occupants';
+            $tag[] = xiti_xtpage_filter($node->title);
+            $tag[] = xiti_xtpage_filter($node->title);
+            break;
+
+          case XITI_SINFORMER_LES_ATOUTS_DU_NEUF_NID:
+            $tag[] = 'Les_atouts_du_neuf';
+            $tag[] = 'Accueil_les_atouts_du_neuf';
+            $tag[] = xiti_xtpage_filter($node->title);
+            $tag[] = xiti_xtpage_filter($node->title);
+            break;
+
+          case XITI_SINFORMER_LES_CLES_POUR_ACHETER_DANS_LE_NEUF_NID:
+            $tag[] = 'Les_cles_pour_acheter_dans_le_neuf';
+            $tag[] = 'Accueil';
+            $tag[] = xiti_xtpage_filter($node->title);
+            $tag[] = xiti_xtpage_filter($node->title);
+            break;
+
+          case XITI_SINFORMER_SCELLIER_INVESTISSEURS_NID:
+            $tag[] = 'Scellier_et_aides_dediees_investisseurs';
+            $tag[] = 'Accueil_scellier_et_aides_dediees_investisseurs_accueil';
+            $tag[] = xiti_xtpage_filter($node->title);
+            $tag[] = xiti_xtpage_filter($node->title);
+            break;
+        }
+      }
+      break;
+
+    case 'article_bi_et_vous':
+      $tag[] = 'et_vous';
+      if (!empty($node->field_sous_rubrique_bev[LANGUAGE_NONE][0]['nid'])) {
+        switch ($node->field_sous_rubrique_bev[LANGUAGE_NONE][0]['nid']) {
+          case XITI_BIETVOUS_NOS_ENGAGEMENTS_NID:
+            $tag[] = 'Nos_engagements';
+            $tag[] = 'Detail_nos_engagements';
+            $tag[] = xiti_xtpage_filter($node->title);
+            $tag[] = 'Detail_' . xiti_xtpage_filter($node->title);
+            break;
+
+          case XITI_BIETVOUS_NOS_GARANTIES_NID:
+            $tag[] = 'Nos_garanties';
+            $tag[] = 'Detail_nos_garanties';
+            $tag[] = xiti_xtpage_filter($node->title);
+            $tag[] = 'Detail_' . xiti_xtpage_filter($node->title);
+            break;
+
+          case XITI_BIETVOUS_NOS_SERVICES_NID:
+            $tag[] = 'Nos_services';
+            $tag[] = 'Detail_nos_services';
+            $tag[] = xiti_xtpage_filter($node->title);
+            $tag[] = 'Detail_' . xiti_xtpage_filter($node->title);
+            break;
+        }
+      }
+      break;
+
+    case 'program':
+      $destination = drupal_get_destination();
+      if (!empty($destination['destination']) && substr_count($destination['destination'], 'espace/maison')) {
+        $tag[] = 'Espace_Maison';
+      }
+      else {
+        $tag[] = 'Rechercher_logement';
+      }
+      if (!empty($_GET['lot_type'])) {
+        $tag[] = 'Detail';
+        $tag[] = 'Residence';
+        $tag[] = xiti_xtpage_filter($node->title);
+        $tag[] = 'Detail_residence_' . xiti_xtpage_filter($node->title);
+      }
+      else {
+        $tag[] = 'Detail';
+        $tag[] = xiti_xtpage_filter($node->title);
+        $tag[] = 'Residence';
+        $tag[] = 'Detail_' . xiti_xtpage_filter($node->title) . '_residence';
+      }
+      break;
+
+    case 'lot':
+      $destination = drupal_get_destination();
+      if (!empty($destination['destination']) && substr_count($destination['destination'], 'espace/maison')) {
+        $tag[] = 'Espace_Maison';
+      }
+      else {
+        $tag[] = 'Rechercher_logement';
+      }
+      $tag[] = 'Detail';
+      $tag[] = 'Lot';
+      if (!empty($node->field_programm[LANGUAGE_NONE][0]['nid'])) {
+        $program = node_load($node->field_programm[LANGUAGE_NONE][0]['nid']);
+        $tag[] = xiti_xtpage_filter($node->title);
+      }
+      $tag[] = 'Detail_lot_' . xiti_xtpage_filter($node->title);
+      break;
+
+    default:
+      break;
+  }
+  return $tag;
+}
+
+/**
+ * Generate xiti tags for espace maison
+ */
+function xiti_generate_search_type_xtpage(&$tag) {
+  if (!empty($_GET['type_results'])) {
+    switch ($_GET['type_results']) {
+      case 'carte':
+        $tag[] = 'Carte';
+        $tag[] = 'Layer';
+        $tag[] = 'Resultat_carte';
+        break;
+
+      case 'liste':
+        $tag[] = 'Liste';
+        $tag[] = 'Layer';
+        $tag[] = 'Resultat_liste';
+        break;
+
+      case 'galerie':
+        $tag[] = 'Galerie';
+        $tag[] = 'Layer';
+        $tag[] = 'Resultat_galerie';
+        break;
+    }
+  }
+}
+
+/**
+ * Generate xtpage for search page
+ */
+function xiti_generate_search_xtpage($tag) {
+  switch (arg(1)) {
+    case 'avantp':
+      $tag[] = 'Avant_premieres';
+      $tag[] = 'Liste_avant_premiere';
+      break;
+
+    case 'nouveaute':
+      $tag[] = 'Nouveautes';
+      $tag[] = 'Liste_nouveaute';
+      break;
+
+    case 'livraison_imminente':
+      $tag[] = 'Livraisons_imminentes';
+      $tag[] = 'Liste_livraison_imminente';
+      break;
+
+    case 'maison':
+      $tag[] = 'Maisons';
+      $tag[] = 'Liste_maison';
+      break;
+
+    case 'rservice':
+      $tag[] = 'Residences_et_services';
+      $tag[] = 'Liste_residence_et_services';
+      break;
+
+    case 'lcparking':
+      $tag[] = 'Locaux_commerciaux_parkings';
+      $tag[] = 'Liste_locaux_commerciaux_parkings';
+      break;
+
+    case 'offre_speciale':
+      $tag[] = 'Offres_speciales';
+      $tag[] = 'Liste_offres_spéciales';
+      break;
+
+    case 'rnoveom':
+      $tag[] = 'Residences_noveom';
+      $tag[] = 'Liste_residences_noveom';
+      break;
+  }
+  return $tag;
+}
+
+/**
+ * Generate xtpage params for perso page
+ */
+function xiti_generate_perso_xtpage(&$tag) {
+  $tag[] = 'Compte_perso';
+  switch (arg(3)) {
+    case 'profile':
+      $tag[] = 'Mon_profil';
+      $tag[] = 'Detail_mon_profil';
+      $tag[] = 'Detail_mon_profil';
+      break;
+
+    case 'selections':
+      $tag[] = 'Mes_selections';
+      $tag[] = 'Detail_mes_selections';
+      $tag[] = 'Detail_mes_selections';
+      break;
+
+    case 'alerts':
+      $tag[] = 'Mes_alertes';
+      $tag[] = 'Detail_mes_alertes';
+      $tag[] = 'Detail_mes_alertes';
+      break;
+
+    case 'info':
+      $tag[] = 'Mes_infos_pratiques';
+      $tag[] = 'Detail_mes_infos_pratiques';
+      $tag[] = 'Detail_mes_infos_pratiques';
+      break;
+
+    case 'client':
+      $tag[] = 'En_devenant_client';
+      $tag[] = 'Detail_en_devenant_client';
+      $tag[] = 'Detail_en_devenant_client';
+      break;
+
+    default:
+      $tag[] = 'Accueil';
+      $tag[] = 'Accueil_compte_perso';
+      break;
+  }
+}
+
+/**
+ * Helper function to generate XITI snippet.
+ */
+function xiti_generate_snippet($type = 'page') {
+  $snippet = '';
+  global $user;
+  if (variable_get('xiti_enabled', 0)) {
+    $scripts  = xiti_get_scripts_list();
+
+    $xiti = array();
+    $xiti['xiti_xtsd'] = variable_get('xiti_xtsd', '');
+    $xiti['xiti_xtn2'] = '1';
+    $xiti['xiti_xtpage'] = xiti_get_page_tag();
+    $xiti['xiti_noscr_image'] = variable_get('xiti_noscr_image', '');
+    $xiti['xiti_xtsite'] = variable_get('xiti_xtsite', '');
+    $xiti['xiti_js_script'] = file_create_url(base_path() . drupal_get_path('module', 'xiti') . '/js/' . $scripts[variable_get('xiti_script', 1)]);
+    $xiti['xiti_xtdi'] = '';
+
+    if (!empty($xiti['xiti_xtpage']) && $xiti['xiti_xtn2'] !== '') {
+      if ($type == 'page') {
+        $snippet  = '<div class="xiti_tracker"><script type="text/javascript">' . "\n";
+        $snippet .= '<!--' . "\n";
+        $snippet .= 'xtnv = document; ' . "\n";
+        $snippet .= 'xtsd = "' . $xiti['xiti_xtsd'] . '"; ' . "\n";
+        $snippet .= 'xtsite = "' . $xiti['xiti_xtsite'] . '"; ' . "\n";
+        $snippet .= 'xtn2 = "' . $xiti['xiti_xtn2'] . '"; ' . "\n";
+        $snippet .= 'xtpage = "' . $xiti['xiti_xtpage'] . '"; ' . "\n";
+        $snippet .= 'xtdi = "' . $xiti['xiti_xtdi'] . '"; ' . "\n";
+        $snippet .= 'xt_multc = ""; ' . "\n";
+        $snippet .= 'xt_an = ""; ' . "\n";
+        $snippet .= 'xt_ac = ""; ' . "\n";
+        $snippet .= 'if (window.xtparam!=null){window.xtparam+="&ac="+xt_ac+"&an="+xt_an+xt_multc;}' . "\n";
+        $snippet .= 'else{window.xtparam="&ac="+xt_ac+"&an="+xt_an+xt_multc;};' . "\n";
+        $snippet .= ' //--></script>' . "\n";
+
+        $snippet .= '<script type="text/javascript" src="' . $xiti['xiti_js_script'] . '"></script>' . "\n";
+        $snippet .= '<noscript>' . "\n";
+        $snippet .= '<img id="xiti-image-track" width="1" height="1" src="' . $xiti['xiti_noscr_image'] . '?s=' . $xiti['xiti_xtsite'] . '&s2=' . $xiti['xiti_xtn2'] . '&p=' . $xiti['xiti_xtpage'] . '&di=' . $xiti['xiti_xtdi'] . '&an=&ac=' . '" />' . "\n";
+        $snippet .= '</noscript></div>' . "\n";
+      }
+      else {
+        $snippet['image']  = '<div class="xiti_tracker">' . "\n";
+        $snippet['image'] .= '<script type="text/javascript" src="' . $xiti['xiti_js_script'] . '"></script>' . "\n";
+        $snippet['image'] .= '<noscript>' . "\n";
+        $snippet['image'] .= '<img id="xiti-image-track" width="1" height="1" src="' . $xiti['xiti_noscr_image'] . '?s=' . $xiti['xiti_xtsite'] . '&s2=' . $xiti['xiti_xtn2'] . '&p=' . $xiti['xiti_xtpage'] . '&di=' . $xiti['xiti_xtdi'] . '&an=&ac=' . '" />' . "\n";
+        $snippet['image'] .= '</noscript></div>' . "\n";
+        $snippet += $xiti;
+      }
+    }
+  }
+
+  return $snippet;
+}
+
+/**
+ * Filter for xiti url
+ *
+ * @param string $xtpage
+ *   page url
+ */
+function xiti_xtpage_filter($xtpage) {
+  $search = array(' ', '-', '"', '#', '%', '&',
+    ',', ';', '<', '=', '>',
+    '?', '@', '[', '\\', ']',
+    '\'', '{', '|', '}');
+
+  $replace = array('_', '_', '', '_', '_', '_',
+    '_', '_', '_', '_', '_',
+    '_', '_', '_', '_', '_',
+    '_', '_', '_', '_');
+
+  $xtpage = str_replace($search, $replace, $xtpage);
+  $xtpage = htmlentities($xtpage, ENT_IGNORE, 'UTF-8');
+  $xtpage = preg_replace('@&(.)[acute|grave|circ|ring|tilde|uml|elig|cedil|slash|zlig]+;@', '$1', $xtpage);
+
+  return html_entity_decode($xtpage);
+}
+
+/**
+ * Implements hook_variable_info().
+ */
+function xiti_variable_info($options) {
+  $variables['xiti_enabled'] = array(
+    'type' => 'checkbox',
+    'title' => t('Xiti enabled.', array(), $options),
+    'default' => 0,
+    'group' => 'xiti_group',
+  );
+  $variables['xiti_xtsd'] = array(
+    'type' => 'text',
+    'title' => t('xtsd', array(), $options),
+    'default' => '',
+    'group' => 'xiti_group',
+  );
+  $variables['xiti_xtsite'] = array(
+    'type' => 'text',
+    'title' => t('xtsite', array(), $options),
+    'default' => '',
+    'group' => 'xiti_group',
+  );
+  $scripts = xiti_get_scripts_list();
+  $variables['xiti_script'] = array(
+    'type' => 'select',
+    'title' => t('Script', array(), $options),
+    'options' => $scripts,
+    'default' => 2,
+    'group' => 'xiti_group',
+  );
+  $variables['xiti_noscr_image'] = array(
+    'type' => 'string',
+    'title' => t('NOSCRIPT image', array(), $options),
+    'default' => 'http://logi243.xiti.com/hit.xiti',
+    'description' => t('Enter the 1x1 px image URL for noscript tagging.'),
+    'group' => 'xiti_group',
+  );
+  return $variables;
+}
+
+/**
+ * Implements hook_variable_group_info().
+ */
+function xiti_variable_group_info() {
+  $groups['xiti_group'] = array(
+    'title' => t('XITI Settings'),
+    'description' => t('XITI Settings'),
+    'access' => 'administer site configuration',
+    'path' => array('admin/config/system/settings/xiti'),
+  );
+  return $groups;
+}

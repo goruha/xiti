@@ -1,0 +1,4 @@
+name = XITI Integration
+description = XITI Integration.
+core = 7.x
+package = Xiti
