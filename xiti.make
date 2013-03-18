@@ -2,6 +2,7 @@ api = 2
 core = 7.x
 
 ; http://drupal.org/node/979652#comment-7189400
+projects[context][subdir] = "contrib"
 projects[context][patch][] = "patches/context/token_support.start.patch"
 
 projects[contextphp][subdir] = "contrib"
