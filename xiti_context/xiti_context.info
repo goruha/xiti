@@ -3,4 +3,5 @@ description = Integrate xiti with context
 core = 7.x
 package = XITI
 dependencies[] = context
+dependencies[] = context_weight
 dependencies[] = xiti
