@@ -1,0 +1,29 @@
+diff --git a/context_weight.module b/context_weight.module
+index 3c48146..b7d0ffe 100644
+--- a/context_weight.module
++++ b/context_weight.module
+@@ -6,7 +6,7 @@
+  */
+ function context_weight_context_load_by_weight() {
+   $contexts = context_load();
+-  uasort($contexts, '_context_weight_context_sort_by_weight');
++  @uasort($contexts, '_context_weight_context_sort_by_weight');
+   return $contexts;
+ }
+ 
+@@ -15,7 +15,7 @@ function context_weight_context_load_by_weight() {
+  */
+ function context_weight_context_active_contexts_by_weight() {
+   $contexts = context_active_contexts();
+-  uasort($contexts, '_context_weight_context_sort_by_weight');
++  @uasort($contexts, '_context_weight_context_sort_by_weight');
+   return $contexts;
+ }
+ 
+@@ -259,4 +259,4 @@ function context_weight_form_bean_form_alter(&$form, &$form_state, $form_id) {
+  */
+ function context_weight_modules_enabled($modules) {
+   context_weight_invalidate_default_block_weights();
+-}
+\ No newline at end of file
++}

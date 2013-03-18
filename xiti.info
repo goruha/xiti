@@ -1,4 +1,4 @@
-name = XITI Integration
-description = XITI Integration.
+name = XiTi
+description = Provide a way to define a XiTi snippet for a specific URL
 core = 7.x
-package = Xiti
+package = XITI

@@ -1,0 +1,6 @@
+name = XiTi Context
+description = Integrate xiti with context
+core = 7.x
+package = XITI
+dependencies[] = context
+dependencies[] = xiti

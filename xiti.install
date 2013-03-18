@@ -1,0 +1,74 @@
+<?php
+
+/**
+ * Implementation of hook_schema()
+ *
+ */
+function xiti_schema() {
+  $schema = array();
+  $schema['xiti'] = array(
+    'description' => 'Stores xiti snippets',
+    'fields' => array(
+      'xid' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Unique XiTi snippet identifier'
+      ),
+      'target' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+        'description' => 'Targetted URL'
+      ),
+      'xiti_xtpage' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+        'description' => 'xtpage variable value'
+      ),
+      'xiti_xtdi' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'default' => 0,
+        'description' => 'xtdi variable value'
+      ),
+      'xiti_xtn2' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'default' => 0,
+        'description' => 'xtdi variable value'
+      ),
+      'last_modified' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'The timestamp of when the snippet was last updated',
+      ),
+    ),
+    'primary key' => array('xid'),
+    'unique key' => array('target_url' => 'target'),
+  );
+
+  return $schema;
+}
+
+
+/**
+ *
+ * Implementation of hook_uninstall
+ */
+function xiti_uninstall() {
+
+  $settings = array(
+    'xiti_xtsd',
+    'xiti_xtsite',
+    'xiti_js_script',
+    'xiti_noscr_image',
+    'xiti_tagging_plan',
+    'xiti_default_xtn2',
+    'xiti_default_xtdi',
+  );
+  foreach($settings as $var){
+    variable_del($var);
+  }
+}

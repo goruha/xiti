@@ -1,0 +1,32 @@
+<?php
+
+/**
+ * Implementation of hook_context_plugins().
+ *
+ * This is a ctools plugins hook.
+ */
+function xiti_context_context_plugins() {
+  module_load_include('inc', 'xiti_context', 'context.plugins');
+  return _xiti_context_context_plugins();
+}
+
+
+/**
+ * Implementation of hook_context_registry().
+ */
+function xiti_context_context_registry() {
+  module_load_include('inc', 'xiti_context', 'context.plugins');
+  return _xiti_context_context_registry();
+}
+
+/**
+ * Implements of hook_page_build().
+ *
+ * Add XiTi tags
+ */
+function xiti_context_page_build(&$page) {
+  if ($plugin = context_get_plugin('reaction', 'xiti')) {
+    $plugin->execute($page);
+  }
+}
+

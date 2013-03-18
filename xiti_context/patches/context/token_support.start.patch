@@ -1,0 +1,122 @@
+diff --git a/context.module b/context.module
+index a3beee2..5485bd6 100644
+--- a/context.module
++++ b/context.module
+@@ -75,7 +75,9 @@ function context_context($op = CONTEXT_GET, $namespace = NULL, $attribute = NULL
+       break;
+     case CONTEXT_ISSET:
+       // return entire context
+-      if (!$namespace) return FALSE;
++      if (!$namespace) {
++        return FALSE;
++      }
+       if (!$attribute) {
+         // return entire space if set
+         return isset($context[$namespace]);
+@@ -245,7 +247,7 @@ function context_load($name = NULL, $reset = FALSE) {
+  *
+  * @param $context
+  *   The context object to be inserted.
+- *
++ *                                                                   condition_met
+  * @return
+  *   Returns true on success, false on failure.
+  */
+@@ -561,3 +563,12 @@ function context_preprocess_block(&$vars) {
+     $vars['classes_array'][] = 'context-block-empty';
+   }
+ }
++
++/**
++ * Implements hook_context_load_alter()
++ *
++ * @param $context
++ */
++function context_context_load_alter(&$context) {
++  $context->arguments = array();
++}
+diff --git a/plugins/context_condition.inc b/plugins/context_condition.inc
+index 95951d9..3c8c37c 100644
+--- a/plugins/context_condition.inc
++++ b/plugins/context_condition.inc
+@@ -135,10 +135,13 @@ class context_condition {
+   /**
+    * Marks a context as having met this particular condition.
+    */
+-  function condition_met($context, $value = NULL) {
++  function condition_met($context, $value = NULL, $arguments = array()) {
+     if (isset($value)) {
+       $this->values[$value] = isset($this->values[$value]) ? $this->values[$value] : array();
+       $this->values[$value][] = $context->name;
++      if (!empty($arguments)) {
++        $context->arguments += array_merge($arguments, $context->arguments);
++      }
+     }
+     context_condition_met($context, $this->plugin);
+   }
+diff --git a/plugins/context_condition_node.inc b/plugins/context_condition_node.inc
+index 6c2c534..7a15d32 100644
+--- a/plugins/context_condition_node.inc
++++ b/plugins/context_condition_node.inc
+@@ -52,10 +52,12 @@ class context_condition_node extends context_condition {
+         $options = $this->fetch_from_context($context, 'options');
+         if (!empty($options['node_form']) && in_array($options['node_form'], array(CONTEXT_NODE_FORM, CONTEXT_NODE_FORM_ONLY))) {
+           $this->condition_met($context, $node->type);
++          $context->arguments['node'] = $node;
+         }
+       }
+       elseif (empty($options['node_form']) || $options['node_form'] != CONTEXT_NODE_FORM_ONLY) {
+         $this->condition_met($context, $node->type);
++        $context->arguments['node'] = $node;
+       }
+     }
+   }
+diff --git a/plugins/context_condition_taxonomy_term.inc b/plugins/context_condition_taxonomy_term.inc
+index e3e0478..96b42f9 100644
+--- a/plugins/context_condition_taxonomy_term.inc
++++ b/plugins/context_condition_taxonomy_term.inc
+@@ -37,10 +37,12 @@ class context_condition_taxonomy_term extends context_condition {
+         $options = $this->fetch_from_context($context, 'options');
+         if (!empty($options['term_form']) && in_array($options['term_form'], array(1, 2))) {
+           $this->condition_met($context, $term->vocabulary_machine_name);
++          $context->arguments['term'] = $term;
+         }
+       }
+       elseif (empty($options['term_form']) || $options['term_form'] != 2) {
+         $this->condition_met($context, $term->vocabulary_machine_name);
++        $context->arguments['term'] = $term;
+       }
+     }
+   }
+diff --git a/plugins/context_condition_user_page.inc b/plugins/context_condition_user_page.inc
+index 4e1596b..31c5545 100644
+--- a/plugins/context_condition_user_page.inc
++++ b/plugins/context_condition_user_page.inc
+@@ -33,6 +33,7 @@ class context_condition_user_page extends context_condition {
+     foreach ($this->get_contexts($op) as $context) {
+       if ($op === 'register') {
+         $this->condition_met($context);
++        $context->arguments['user'] = $account;
+       }
+       else {
+         $options = $this->fetch_from_context($context, 'options');
+@@ -41,16 +42,19 @@ class context_condition_user_page extends context_condition {
+           case 'current':
+             if ($account->uid == $user->uid) {
+               $this->condition_met($context);
++	      $context->arguments['user'] = $account;
+             }
+             break;
+           case 'other':
+             if ($account->uid != $user->uid) {
+               $this->condition_met($context);
++	      $context->arguments['user'] = $account;
+             }
+             break;
+           case 'all':
+           default:
+             $this->condition_met($context);
++            $context->arguments['user'] = $account;
+             break;
+         }
+       }
